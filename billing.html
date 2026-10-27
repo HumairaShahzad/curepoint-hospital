@@ -1,0 +1,419 @@
+<!-- billing.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing - CurePoint Hospital</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Header Banner -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">+</div>
+      <div>
+        <div class="brand-title">CurePoint Hospital</div>
+        <div class="brand-subtitle">Hospital Management System</div>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-outline" onclick="handleLoadSample()" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3);">
+        ⚡ Load 30-Day Sample Data
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="index.html">📊 Dashboard</a>
+    <a href="patients.html">👥 Patients</a>
+    <a href="manage-doctors.html">🩺 Manage Doctors</a>
+    <a href="doctors.html">👨‍⚕️ Doctor Visits</a>
+    <a href="lab.html">🧪 Lab Tests</a>
+    <a href="billing.html" class="active">💳 Billing</a>
+    <a href="reports.html">📈 Reports</a>
+  </nav>
+
+  <div class="container">
+
+    <div style="margin-bottom: 1.5rem;">
+      <h1 style="font-size: 26px; color: var(--text-dark);">💳 Billing & Payments</h1>
+      <p style="color: #64748b; font-size: 14px;">Select a patient to view their outstanding charges, then collect payment via Cash, Card, or bKash.</p>
+    </div>
+
+    <!-- Stat strip -->
+    <div class="grid grid-4" style="margin-bottom: 1.5rem;">
+      <div class="card stat-card">
+        <div class="stat-label">Total Billed</div>
+        <div class="stat-value" id="statBilled">Tk 0</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">Total Collected</div>
+        <div class="stat-value" id="statPaid" style="color:#10b981;">Tk 0</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">Outstanding Due</div>
+        <div class="stat-value" id="statDue" style="color:#ef4444;">Tk 0</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">Today's Collection</div>
+        <div class="stat-value" id="statToday" style="color:#0284c7;">Tk 0</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="grid-template-columns: 1fr 1.6fr; align-items: start;">
+
+      <!-- LEFT — Patient selector + payment form -->
+      <div class="card">
+        <div class="card-title">👤 Select Patient</div>
+        <div class="form-group">
+          <label>Patient *</label>
+          <select id="patientSel" onchange="loadPatientBill()">
+            <option value="">-- Select Patient --</option>
+          </select>
+        </div>
+
+        <div id="patientSummary" style="display:none; background:#f0f9ff; border-left:4px solid #0284c7; padding:12px 14px; border-radius:6px; margin-bottom:16px;">
+          <div style="font-size:13px; color:#0369a1; margin-bottom:6px;" id="patientInfo"></div>
+          <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:13px;">
+            <div>
+              <div style="color:#64748b; font-size:11px;">BILLED</div>
+              <div style="font-weight:700;" id="pBilled">Tk 0</div>
+            </div>
+            <div>
+              <div style="color:#64748b; font-size:11px;">PAID</div>
+              <div style="font-weight:700; color:#10b981;" id="pPaid">Tk 0</div>
+            </div>
+            <div>
+              <div style="color:#64748b; font-size:11px;">DUE</div>
+              <div style="font-weight:700; color:#ef4444;" id="pDue">Tk 0</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="paymentFormBox" style="display:none;">
+          <div class="card-title" style="font-size:15px; margin-top:8px;">💰 Collect Payment</div>
+          <form id="payForm">
+            <div class="form-group">
+              <label>Amount (Tk) *</label>
+              <input type="number" id="payAmount" min="1" step="0.01" required placeholder="Enter amount">
+            </div>
+            <div class="form-group">
+              <label>Payment Method *</label>
+              <select id="payMethod" required>
+                <option value="">-- Select Method --</option>
+                <option value="Cash">💵 Cash</option>
+                <option value="Card">💳 Card</option>
+                <option value="bKash">📱 bKash</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Date *</label>
+              <input type="date" id="payDate" required>
+            </div>
+            <div class="form-group">
+              <label>Note (optional)</label>
+              <input type="text" id="payNote" placeholder="E.g. transaction ID, remarks">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">✓ Record Payment</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- RIGHT — Charges + payment history for selected patient -->
+      <div class="card">
+        <div class="card-title">🧾 Charges & Payment History</div>
+
+        <div id="noPatientMsg" style="text-align:center; padding:3rem 1rem; color:#94a3b8;">
+          <div style="font-size:48px; margin-bottom:12px;">👈</div>
+          <div style="font-size:14px;">Select a patient from the left to view their billing ledger.</div>
+        </div>
+
+        <div id="billLedger" style="display:none;">
+          <div style="font-weight:600; font-size:13px; color:#475569; margin-bottom:8px;">CHARGES</div>
+          <div class="table-scroll" style="max-height:260px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="chargesTable"></tbody>
+            </table>
+          </div>
+
+          <div style="font-weight:600; font-size:13px; color:#475569; margin:14px 0 8px;">PAYMENTS RECEIVED</div>
+          <div class="table-scroll" style="max-height:240px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Method</th>
+                  <th>Note</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ALL recent transactions -->
+    <div class="card" style="margin-top:1.5rem;">
+      <div class="card-title">📋 All Recent Transactions (last 30)</div>
+      <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+        <input type="text" id="searchAll" placeholder="🔍 Search by patient name or ID..." style="flex:1; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; min-width:200px;">
+        <select id="filterKind" style="padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px;">
+          <option value="">All Entries</option>
+          <option value="charge">Charges Only</option>
+          <option value="payment">Payments Only</option>
+        </select>
+      </div>
+      <div class="table-scroll" style="max-height:380px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Patient</th>
+              <th>Entry</th>
+              <th>Details</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody id="allTxnTable">
+            <tr><td colspan="5" style="text-align:center; color:#94a3b8;">No transactions yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="db.js"></script>
+  <script src="chat-widget.js"></script>
+  <script>
+    let currentPatientId = null;
+
+    function handleLoadSample() {
+      if (confirm('Load 30-day sample data? This will replace any existing records.')) {
+        loadSampleData();
+        location.reload();
+      }
+    }
+
+    // ---------- Load patient dropdown ----------
+    function loadPatientsList() {
+      const patients = getRecords(DB_KEYS.PATIENTS);
+      const sel = document.getElementById('patientSel');
+      sel.innerHTML = '<option value="">-- Select Patient --</option>' +
+        patients.map(p => `<option value="${p.id}">${p.id} — ${p.name} (${p.age}/${p.gender})</option>`).join('');
+    }
+
+    // ---------- Compute billing totals for ONE patient ----------
+    function computePatientBill(patientId) {
+      const payments = getRecords(DB_KEYS.PAYMENTS);
+      const rows = payments.filter(p => p.patientId === patientId);
+      // In this system:
+      //   - A record with (amount > 0 && paid == 0 && method == '') = a CHARGE
+      //   - A record with (paid > 0 && method)                      = a PAYMENT
+      const charges = rows.filter(r => (+r.amount || 0) > 0 && (!r.method) && (!r.paid || +r.paid === 0));
+      const paymentsIn = rows.filter(r => (+r.paid || 0) > 0 && r.method);
+      const billed = charges.reduce((s, r) => s + (+r.amount || 0), 0);
+      const paid = paymentsIn.reduce((s, r) => s + (+r.paid || 0), 0);
+      return { charges, paymentsIn, billed, paid, due: billed - paid };
+    }
+
+    // ---------- Render selected patient's bill ----------
+    function loadPatientBill() {
+      currentPatientId = document.getElementById('patientSel').value;
+      const summary = document.getElementById('patientSummary');
+      const payBox = document.getElementById('paymentFormBox');
+      const noMsg = document.getElementById('noPatientMsg');
+      const ledger = document.getElementById('billLedger');
+
+      if (!currentPatientId) {
+        summary.style.display = 'none';
+        payBox.style.display = 'none';
+        noMsg.style.display = 'block';
+        ledger.style.display = 'none';
+        return;
+      }
+
+      const patients = getRecords(DB_KEYS.PATIENTS);
+      const patient = patients.find(p => p.id === currentPatientId);
+      if (!patient) return;
+
+      const bill = computePatientBill(currentPatientId);
+
+      document.getElementById('patientInfo').innerHTML =
+        `<strong>${patient.name}</strong> · ${patient.id} · ${patient.age}y ${patient.gender} · 📞 ${patient.phone || '—'}`;
+      document.getElementById('pBilled').innerText = 'Tk ' + bill.billed.toLocaleString();
+      document.getElementById('pPaid').innerText = 'Tk ' + bill.paid.toLocaleString();
+      document.getElementById('pDue').innerText = 'Tk ' + bill.due.toLocaleString();
+
+      summary.style.display = 'block';
+      payBox.style.display = 'block';
+      noMsg.style.display = 'none';
+      ledger.style.display = 'block';
+
+      // Charges table
+      const cTbody = document.getElementById('chargesTable');
+      if (!bill.charges.length) {
+        cTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No charges on file.</td></tr>`;
+      } else {
+        cTbody.innerHTML = bill.charges.slice().reverse().map(c => `
+          <tr>
+            <td style="font-size:12px; color:#64748b;">${c.date}</td>
+            <td><span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">${c.type || 'Charge'}</span></td>
+            <td style="font-size:12px;">${c.source || ''} ${c.refId ? '· ' + c.refId : ''}</td>
+            <td style="font-weight:600;">Tk ${(+c.amount).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Payments table
+      const pTbody = document.getElementById('paymentsTable');
+      if (!bill.paymentsIn.length) {
+        pTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No payments received yet.</td></tr>`;
+      } else {
+        pTbody.innerHTML = bill.paymentsIn.slice().reverse().map(p => `
+          <tr>
+            <td style="font-size:12px; color:#64748b;">${p.date}</td>
+            <td><span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">${p.method}</span></td>
+            <td style="font-size:12px;">${p.note || '—'}</td>
+            <td style="font-weight:600; color:#10b981;">Tk ${(+p.paid).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Prefill payment amount with full due
+      document.getElementById('payAmount').value = bill.due > 0 ? bill.due : '';
+    }
+
+    // ---------- Submit payment ----------
+    document.getElementById('payForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!currentPatientId) return alert('Please select a patient first.');
+
+      const amount = parseFloat(document.getElementById('payAmount').value);
+      const method = document.getElementById('payMethod').value;
+      const date = document.getElementById('payDate').value;
+      const note = document.getElementById('payNote').value.trim();
+
+      if (!amount || amount <= 0) return alert('Enter a valid payment amount.');
+      if (!method) return alert('Please choose a payment method.');
+
+      const patients = getRecords(DB_KEYS.PATIENTS);
+      const patient = patients.find(p => p.id === currentPatientId);
+
+      const payments = getRecords(DB_KEYS.PAYMENTS);
+      payments.push({
+        id: 'PY-' + Date.now(),
+        patientId: currentPatientId,
+        patientName: patient.name,
+        type: 'Payment',
+        source: 'Billing',
+        refId: '',
+        amount: 0,
+        paid: amount,
+        method: method,
+        date: date,
+        note: note,
+        createdAt: new Date().toISOString()
+      });
+      saveRecords(DB_KEYS.PAYMENTS, payments);
+
+      this.reset();
+      document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+      loadPatientBill();
+      renderStats();
+      renderAllTxns();
+      alert(`✓ Tk ${amount.toLocaleString()} collected via ${method}.`);
+    });
+
+    // ---------- Overall stats across hospital ----------
+    function renderStats() {
+      const payments = getRecords(DB_KEYS.PAYMENTS);
+      let totalBilled = 0, totalPaid = 0, todayPaid = 0;
+      const today = new Date().toISOString().split('T')[0];
+
+      payments.forEach(r => {
+        const amt = +r.amount || 0;
+        const paid = +r.paid || 0;
+        if (amt > 0 && !r.method && paid === 0) totalBilled += amt;
+        if (paid > 0 && r.method) {
+          totalPaid += paid;
+          if (r.date === today) todayPaid += paid;
+        }
+      });
+
+      document.getElementById('statBilled').innerText = 'Tk ' + totalBilled.toLocaleString();
+      document.getElementById('statPaid').innerText = 'Tk ' + totalPaid.toLocaleString();
+      document.getElementById('statDue').innerText = 'Tk ' + (totalBilled - totalPaid).toLocaleString();
+      document.getElementById('statToday').innerText = 'Tk ' + todayPaid.toLocaleString();
+    }
+
+    // ---------- All recent transactions table ----------
+    function renderAllTxns() {
+      const payments = getRecords(DB_KEYS.PAYMENTS);
+      const search = document.getElementById('searchAll').value.toLowerCase();
+      const kind = document.getElementById('filterKind').value;
+
+      let list = [...payments].reverse();
+      if (search) {
+        list = list.filter(r =>
+          (r.patientName || '').toLowerCase().includes(search) ||
+          (r.patientId || '').toLowerCase().includes(search)
+        );
+      }
+      if (kind === 'charge') list = list.filter(r => (+r.amount || 0) > 0 && !r.method);
+      if (kind === 'payment') list = list.filter(r => (+r.paid || 0) > 0 && r.method);
+      list = list.slice(0, 30);
+
+      const tbody = document.getElementById('allTxnTable');
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:1.5rem;">No transactions found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(r => {
+        const isPayment = (+r.paid || 0) > 0 && r.method;
+        const amount = isPayment ? r.paid : r.amount;
+        const badge = isPayment
+          ? `<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">💰 ${r.method}</span>`
+          : `<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">🧾 ${r.type || 'Charge'}</span>`;
+        return `
+          <tr>
+            <td style="font-size:12px; color:#64748b;">${r.date}</td>
+            <td>
+              <div style="font-weight:600; font-size:13px;">${r.patientName}</div>
+              <div style="font-size:11px; color:#94a3b8;">${r.patientId}</div>
+            </td>
+            <td>${badge}</td>
+            <td style="font-size:12px; color:#475569;">${r.source || ''} ${r.refId ? '· ' + r.refId : ''} ${r.note ? '· ' + r.note : ''}</td>
+            <td style="font-weight:700; color:${isPayment ? '#10b981' : '#1e293b'};">Tk ${(+amount).toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('searchAll').addEventListener('input', renderAllTxns);
+    document.getElementById('filterKind').addEventListener('change', renderAllTxns);
+
+    // ---------- Init ----------
+    document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+    loadPatientsList();
+    renderStats();
+    renderAllTxns();
+  </script>
+</body>
+</html>

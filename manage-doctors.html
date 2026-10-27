@@ -1,0 +1,368 @@
+<!-- manage-doctors.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Doctors - CurePoint Hospital</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #10b981; color: white;
+      padding: 12px 24px; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(16,185,129,.4);
+      font-weight: 600; z-index: 9000;
+      transition: transform 0.3s ease;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #ef4444; box-shadow: 0 8px 24px rgba(239,68,68,.4); }
+
+    .doc-badge {
+      background: #ede9fe; color: #5b21b6;
+      padding: 3px 10px; border-radius: 6px;
+      font-weight: 600; font-size: 12px;
+      font-family: 'Courier New', monospace;
+    }
+    .spec-pill {
+      display: inline-block;
+      padding: 3px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600;
+      background: #dbeafe; color: #1e40af;
+    }
+    .fee-pill {
+      display: inline-block;
+      padding: 3px 10px; border-radius: 12px;
+      font-size: 12px; font-weight: 700;
+      background: #dcfce7; color: #166534;
+    }
+
+    .search-wrap { position: relative; margin-bottom: 1rem; }
+    .search-wrap input { padding-left: 40px !important; }
+    .search-wrap::before {
+      content: "🔍"; position: absolute;
+      left: 14px; top: 50%; transform: translateY(-50%);
+      opacity: 0.6;
+    }
+    .empty {
+      text-align: center; padding: 3rem 1rem;
+      color: #94a3b8; font-size: 14px;
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 1rem; }
+
+    .suggestion-chip {
+      display: inline-block;
+      padding: 4px 10px; margin: 2px;
+      background: #f1f5f9; border-radius: 12px;
+      font-size: 11px; cursor: pointer;
+      border: 1px solid #e2e8f0;
+      transition: all 0.15s;
+    }
+    .suggestion-chip:hover {
+      background: #0ea5e9; color: white; border-color: #0ea5e9;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">+</div>
+      <div>
+        <div class="brand-title">CurePoint Hospital</div>
+        <div class="brand-subtitle">Hospital Management System</div>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-outline" onclick="handleLoadSample()" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3);">
+        ⚡ Load 30-Day Sample Data
+      </button>
+    </div>
+  </header>
+
+  <!-- Nav -->
+  <nav>
+    <a href="index.html">📊 Dashboard</a>
+    <a href="patients.html">👥 Patients</a>
+    <a href="manage-doctors.html" class="active">🩺 Manage Doctors</a>
+    <a href="doctors.html">👨‍⚕️ Doctor Visits</a>
+    <a href="lab.html">🧪 Lab Tests</a>
+    <a href="billing.html">💳 Billing</a>
+    <a href="reports.html">📈 Reports</a>
+  </nav>
+
+  <div class="container">
+
+    <div style="margin-bottom: 1.5rem;">
+      <h1 style="font-size: 26px; color: var(--text-dark);">🩺 Manage Doctors</h1>
+      <p style="color: #64748b; font-size: 14px;">
+        Add doctors to the hospital roster. They'll instantly appear in the <strong>Doctor Visits</strong> dropdown.
+      </p>
+    </div>
+
+    <div class="grid" style="grid-template-columns: 380px 1fr; gap: 1.5rem; align-items: start;">
+
+      <!-- LEFT: Add doctor form -->
+      <div class="card">
+        <h2 style="font-size: 18px; margin-bottom: 1rem; color: var(--text-dark);">
+          <span id="formTitle">➕ New Doctor</span>
+        </h2>
+        <form id="doctorForm">
+          <input type="hidden" id="dEditId">
+
+          <div class="form-group">
+            <label>Doctor Name *</label>
+            <input type="text" id="dName" required placeholder="e.g. Dr. Rahman">
+          </div>
+
+          <div class="form-group">
+            <label>Specialization *</label>
+            <input type="text" id="dSpec" required placeholder="e.g. Medicine" list="specList">
+            <datalist id="specList">
+              <option value="Medicine">
+              <option value="Cardiology">
+              <option value="Gynecology">
+              <option value="Pediatrics">
+              <option value="Orthopedics">
+              <option value="Neurology">
+              <option value="Dermatology">
+              <option value="ENT">
+              <option value="Ophthalmology">
+              <option value="Psychiatry">
+              <option value="General Surgery">
+              <option value="Urology">
+            </datalist>
+            <div style="margin-top: 6px;">
+              <span class="suggestion-chip" onclick="setSpec('Medicine')">Medicine</span>
+              <span class="suggestion-chip" onclick="setSpec('Cardiology')">Cardiology</span>
+              <span class="suggestion-chip" onclick="setSpec('Pediatrics')">Pediatrics</span>
+              <span class="suggestion-chip" onclick="setSpec('Gynecology')">Gynecology</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Consultation Fee (Tk) *</label>
+            <input type="number" id="dFee" required min="0" step="50" placeholder="500">
+          </div>
+
+          <div class="form-group">
+            <label>Phone (optional)</label>
+            <input type="tel" id="dPhone" placeholder="017XXXXXXXX">
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 0.5rem;">
+            <button type="submit" class="btn btn-primary" style="flex: 1;" id="submitBtn">
+              💾 Save Doctor
+            </button>
+            <button type="button" class="btn btn-outline" id="cancelBtn" onclick="resetForm()" style="display:none;">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- RIGHT: Doctors list -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 style="font-size: 18px; color: var(--text-dark);">
+            👨‍⚕️ All Doctors (<span id="countBadge">0</span>)
+          </h2>
+        </div>
+        <div class="search-wrap">
+          <input type="text" id="searchBox" placeholder="Search by name or specialization…">
+        </div>
+        <div style="overflow-x: auto;">
+          <table id="docTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Specialization</th>
+                <th>Fee</th>
+                <th>Phone</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="docBody"></tbody>
+          </table>
+          <div id="emptyState" class="empty" style="display:none;">
+            <div class="empty-icon">🩺</div>
+            <div><strong>No doctors yet</strong></div>
+            <div style="margin-top: 0.5rem;">Add one on the left, or click <em>Load 30-Day Sample Data</em>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ⚠️ db.js MUST load before the inline script -->
+  <script src="db.js"></script>
+  <script src="chat-widget.js"></script>
+
+  <script>
+    if (typeof addRecord !== 'function') {
+      alert('❌ db.js did not load. Make sure db.js is in the same folder.');
+    }
+
+    // ---------- Sample data loader ----------
+    function handleLoadSample() {
+      if (confirm('This will replace all current data with 30 days of sample records. Continue?')) {
+        loadSampleData();
+        location.reload();
+      }
+    }
+
+    // ---------- Toast ----------
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2500);
+    }
+
+    // ---------- Chip helper ----------
+    function setSpec(value) {
+      document.getElementById('dSpec').value = value;
+    }
+
+    // ---------- Escape HTML ----------
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, s => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[s]));
+    }
+
+    // ---------- Render table ----------
+    function renderTable() {
+      const search = document.getElementById('searchBox').value.trim().toLowerCase();
+      const all = getRecords(DB_KEYS.DOCTORS);
+      const filtered = search
+        ? all.filter(d =>
+            (d.name || '').toLowerCase().includes(search) ||
+            (d.specialization || '').toLowerCase().includes(search))
+        : all;
+
+      document.getElementById('countBadge').textContent = all.length;
+
+      const body = document.getElementById('docBody');
+      const empty = document.getElementById('emptyState');
+      const table = document.getElementById('docTable');
+
+      if (filtered.length === 0) {
+        body.innerHTML = '';
+        table.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      table.style.display = '';
+      empty.style.display = 'none';
+
+      const sorted = [...filtered].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || ''));
+
+      body.innerHTML = sorted.map(d => `
+        <tr>
+          <td><span class="doc-badge">${d.id}</span></td>
+          <td><strong>${escapeHtml(d.name)}</strong></td>
+          <td><span class="spec-pill">${escapeHtml(d.specialization)}</span></td>
+          <td><span class="fee-pill">Tk ${Number(d.fee || 0).toLocaleString()}</span></td>
+          <td style="color:#64748b; font-size: 13px;">${escapeHtml(d.phone || '—')}</td>
+          <td>
+            <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; margin-right: 4px;"
+              onclick="handleEdit('${d.id}')">✏️</button>
+            <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;"
+              onclick="handleDelete('${d.id}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ---------- Edit ----------
+    function handleEdit(id) {
+      const doc = getRecords(DB_KEYS.DOCTORS).find(d => d.id === id);
+      if (!doc) return;
+      document.getElementById('dEditId').value = doc.id;
+      document.getElementById('dName').value = doc.name;
+      document.getElementById('dSpec').value = doc.specialization;
+      document.getElementById('dFee').value = doc.fee;
+      document.getElementById('dPhone').value = doc.phone || '';
+      document.getElementById('formTitle').textContent = `✏️ Editing ${doc.id}`;
+      document.getElementById('submitBtn').innerHTML = '💾 Update Doctor';
+      document.getElementById('cancelBtn').style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+      document.getElementById('doctorForm').reset();
+      document.getElementById('dEditId').value = '';
+      document.getElementById('formTitle').textContent = '➕ New Doctor';
+      document.getElementById('submitBtn').innerHTML = '💾 Save Doctor';
+      document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    // ---------- Delete ----------
+    function handleDelete(id) {
+      const doc = getRecords(DB_KEYS.DOCTORS).find(d => d.id === id);
+      if (!doc) return;
+
+      // Guardrail: check if this doctor has visits
+      const visits = getRecords(DB_KEYS.VISITS).filter(v => v.doctorId === id);
+      const warning = visits.length > 0
+        ? `\n\n⚠️ This doctor has ${visits.length} recorded visit(s). The visit history will be kept, but the doctor name may show as "Unknown".`
+        : '';
+
+      if (!confirm(`Delete ${doc.name}?${warning}`)) return;
+      deleteRecord(DB_KEYS.DOCTORS, id);
+      showToast(`${doc.name} removed`);
+      renderTable();
+    }
+
+    // ---------- Save / Update ----------
+    document.getElementById('doctorForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const editId = document.getElementById('dEditId').value;
+      const data = {
+        name:           document.getElementById('dName').value.trim(),
+        specialization: document.getElementById('dSpec').value.trim(),
+        fee:            parseInt(document.getElementById('dFee').value, 10),
+        phone:          document.getElementById('dPhone').value.trim()
+      };
+
+      if (!data.name || !data.specialization || isNaN(data.fee)) {
+        showToast('Please fill all required fields', true);
+        return;
+      }
+
+      try {
+        if (editId) {
+          updateRecord(DB_KEYS.DOCTORS, editId, data);
+          showToast(`✅ ${data.name} updated`);
+        } else {
+          const doctor = { id: nextId('D'), ...data, createdAt: new Date().toISOString() };
+          addRecord(DB_KEYS.DOCTORS, doctor);
+          console.log('✅ Saved doctor:', doctor);
+          showToast(`✅ ${doctor.name} added as ${doctor.id}`);
+        }
+        resetForm();
+        renderTable();
+      } catch (err) {
+        console.error('Save failed:', err);
+        showToast('❌ Save failed — check console', true);
+      }
+    });
+
+    // ---------- Live search ----------
+    document.getElementById('searchBox').addEventListener('input', renderTable);
+
+    // ---------- Initial load ----------
+    renderTable();
+  </script>
+</body>
+</html>

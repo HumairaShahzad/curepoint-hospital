@@ -1,0 +1,364 @@
+<!-- lab.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab Tests - CurePoint Hospital</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Header Banner -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">+</div>
+      <div>
+        <div class="brand-title">CurePoint Hospital</div>
+        <div class="brand-subtitle">Hospital Management System</div>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-outline" onclick="handleLoadSample()" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3);">
+        ⚡ Load 30-Day Sample Data
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="index.html">📊 Dashboard</a>
+    <a href="patients.html">👥 Patients</a>
+    <a href="manage-doctors.html">🩺 Manage Doctors</a>
+    <a href="doctors.html">👨‍⚕️ Doctor Visits</a>
+    <a href="lab.html" class="active">🧪 Lab Tests</a>
+    <a href="billing.html">💳 Billing</a>
+    <a href="reports.html">📈 Reports</a>
+  </nav>
+
+  <div class="container">
+
+    <div style="margin-bottom: 1.5rem;">
+      <h1 style="font-size: 26px; color: var(--text-dark);">🧪 Lab Tests</h1>
+      <p style="color: #64748b; font-size: 14px;">Order tests from the price list, track pending/completed status, and enter results.</p>
+    </div>
+
+    <!-- Stat strip -->
+    <div class="grid grid-4" style="margin-bottom: 1.5rem;">
+      <div class="card stat-card">
+        <div class="stat-label">Total Tests Ordered</div>
+        <div class="stat-value" id="statTotal">0</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value" id="statPending" style="color:#f59e0b;">0</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value" id="statDone" style="color:#10b981;">0</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">Lab Revenue (Done)</div>
+        <div class="stat-value" id="statRevenue">Tk 0</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="grid-template-columns: 1fr 1.5fr; align-items: start;">
+
+      <!-- Order Test Form -->
+      <div class="card">
+        <div class="card-title">🩻 Order New Lab Test</div>
+        <form id="labForm">
+          <div class="form-group">
+            <label>Patient *</label>
+            <select id="patientId" required>
+              <option value="">-- Select Patient --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Test Type *</label>
+            <select id="testType" required onchange="autoFillPrice()">
+              <option value="">-- Select Test --</option>
+              <option value="Complete Blood Count (CBC)" data-price="400">Complete Blood Count (CBC) — Tk 400</option>
+              <option value="Blood Sugar (Fasting)" data-price="250">Blood Sugar (Fasting) — Tk 250</option>
+              <option value="Lipid Profile" data-price="900">Lipid Profile — Tk 900</option>
+              <option value="Liver Function Test (LFT)" data-price="1200">Liver Function Test (LFT) — Tk 1,200</option>
+              <option value="Kidney Function Test (KFT)" data-price="1100">Kidney Function Test (KFT) — Tk 1,100</option>
+              <option value="Urine Routine" data-price="300">Urine Routine — Tk 300</option>
+              <option value="Thyroid Panel (TSH, T3, T4)" data-price="1500">Thyroid Panel (TSH, T3, T4) — Tk 1,500</option>
+              <option value="X-Ray Chest" data-price="600">X-Ray Chest — Tk 600</option>
+              <option value="Ultrasound Abdomen" data-price="1800">Ultrasound Abdomen — Tk 1,800</option>
+              <option value="ECG" data-price="500">ECG — Tk 500</option>
+              <option value="COVID-19 RT-PCR" data-price="2500">COVID-19 RT-PCR — Tk 2,500</option>
+              <option value="Dengue NS1" data-price="700">Dengue NS1 — Tk 700</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Price (Tk) *</label>
+            <input type="number" id="price" required min="0" placeholder="Auto-filled">
+          </div>
+
+          <div class="form-group">
+            <label>Date *</label>
+            <input type="date" id="testDate" required>
+          </div>
+
+          <div class="form-group">
+            <label>Notes (optional)</label>
+            <textarea id="notes" rows="2" placeholder="Clinical notes or doctor referral..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%;">🧪 Order Test</button>
+        </form>
+      </div>
+
+      <!-- Tests Table -->
+      <div class="card">
+        <div class="card-title">📋 All Lab Tests</div>
+
+        <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+          <input type="text" id="searchInput" placeholder="🔍 Search by patient, ID or test name..." style="flex:1; padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px; min-width:200px;">
+          <select id="filterStatus" style="padding:9px 12px; border:1px solid #cbd5e1; border-radius:6px;">
+            <option value="">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+
+        <div class="table-scroll" style="max-height: 520px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Test</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="labTable">
+              <tr><td colspan="6" style="text-align:center; color:#94a3b8;">No lab tests yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Result Entry Modal -->
+  <div id="resultModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9000; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:10px; padding:24px; max-width:500px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h3 style="margin:0; color:#0284c7;">📝 Enter Test Result</h3>
+        <button onclick="closeResultModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#64748b;">✕</button>
+      </div>
+      <div id="modalTestInfo" style="background:#f0f9ff; padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:14px; color:#0369a1;"></div>
+      <div class="form-group">
+        <label>Result / Findings *</label>
+        <textarea id="resultText" rows="5" placeholder="E.g. Hemoglobin: 13.5 g/dL (Normal)&#10;WBC: 7,500 /μL (Normal)" style="width:100%;"></textarea>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="closeResultModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveResult()">✓ Save & Mark Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="db.js"></script>
+  <script src="chat-widget.js"></script>
+  <script>
+    let currentModalTestId = null;
+
+    function handleLoadSample() {
+      if (confirm('Load 30-day sample data? This will replace any existing records.')) {
+        loadSampleData();
+        location.reload();
+      }
+    }
+
+    // ---------- Populate patient dropdown ----------
+    function loadPatients() {
+      const patients = getRecords(DB_KEYS.PATIENTS);
+      const sel = document.getElementById('patientId');
+      sel.innerHTML = '<option value="">-- Select Patient --</option>' +
+        patients.map(p => `<option value="${p.id}">${p.id} — ${p.name} (${p.age}/${p.gender})</option>`).join('');
+    }
+
+    // ---------- Auto-fill price from test option ----------
+    function autoFillPrice() {
+      const sel = document.getElementById('testType');
+      const opt = sel.options[sel.selectedIndex];
+      const price = opt.getAttribute('data-price');
+      if (price) document.getElementById('price').value = price;
+    }
+
+    // ---------- Form submission ----------
+    document.getElementById('labForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const patients = getRecords(DB_KEYS.PATIENTS);
+      const pid = document.getElementById('patientId').value;
+      const patient = patients.find(p => p.id === pid);
+      if (!patient) return alert('Please select a valid patient.');
+
+      const tests = getRecords(DB_KEYS.LAB_TESTS);
+      const newId = 'L-' + String(tests.length + 1).padStart(4, '0');
+
+      const record = {
+        id: newId,
+        patientId: pid,
+        patientName: patient.name,
+        testName: document.getElementById('testType').value,
+        price: parseFloat(document.getElementById('price').value) || 0,
+        date: document.getElementById('testDate').value,
+        status: 'Pending',
+        result: '',
+        notes: document.getElementById('notes').value.trim(),
+        createdAt: new Date().toISOString()
+      };
+
+      tests.push(record);
+      saveRecords(DB_KEYS.LAB_TESTS, tests);
+      this.reset();
+      document.getElementById('testDate').value = new Date().toISOString().split('T')[0];
+      renderTable();
+      renderStats();
+      alert(`✓ Lab test ${newId} ordered for ${patient.name}.`);
+    });
+
+    // ---------- Render table ----------
+    function renderTable() {
+      const tests = getRecords(DB_KEYS.LAB_TESTS);
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const statusFilter = document.getElementById('filterStatus').value;
+      const tbody = document.getElementById('labTable');
+
+      let filtered = [...tests].reverse();
+      if (search) {
+        filtered = filtered.filter(t =>
+          (t.patientName || '').toLowerCase().includes(search) ||
+          (t.patientId || '').toLowerCase().includes(search) ||
+          (t.testName || '').toLowerCase().includes(search)
+        );
+      }
+      if (statusFilter) filtered = filtered.filter(t => t.status === statusFilter);
+
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:1.5rem;">No lab tests found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(t => {
+        const badge = t.status === 'Done'
+          ? '<span style="background:#dcfce7; color:#166534; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600;">✓ Done</span>'
+          : '<span style="background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600;">⏳ Pending</span>';
+
+        const actionBtn = t.status === 'Pending'
+          ? `<button class="btn btn-primary" style="padding:5px 10px; font-size:12px;" onclick="openResultModal('${t.id}')">📝 Enter Result</button>`
+          : `<button class="btn btn-outline" style="padding:5px 10px; font-size:12px;" onclick="viewResult('${t.id}')">👁 View</button>`;
+
+        return `
+          <tr>
+            <td style="font-size:12px; color:#64748b;">${t.date}</td>
+            <td>
+              <div style="font-weight:600; font-size:13px;">${t.patientName}</div>
+              <div style="font-size:11px; color:#94a3b8;">${t.patientId}</div>
+            </td>
+            <td style="font-size:13px;">${t.testName}</td>
+            <td style="font-weight:600;">Tk ${(+t.price).toLocaleString()}</td>
+            <td>${badge}</td>
+            <td>${actionBtn}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ---------- Stats ----------
+    function renderStats() {
+      const tests = getRecords(DB_KEYS.LAB_TESTS);
+      const pending = tests.filter(t => t.status === 'Pending');
+      const done = tests.filter(t => t.status === 'Done');
+      const revenue = done.reduce((s, t) => s + (+t.price || 0), 0);
+
+      document.getElementById('statTotal').innerText = tests.length;
+      document.getElementById('statPending').innerText = pending.length;
+      document.getElementById('statDone').innerText = done.length;
+      document.getElementById('statRevenue').innerText = 'Tk ' + revenue.toLocaleString();
+    }
+
+    // ---------- Result Modal ----------
+    function openResultModal(testId) {
+      const tests = getRecords(DB_KEYS.LAB_TESTS);
+      const t = tests.find(x => x.id === testId);
+      if (!t) return;
+      currentModalTestId = testId;
+      document.getElementById('modalTestInfo').innerHTML =
+        `<strong>${t.testName}</strong> for <strong>${t.patientName}</strong> (${t.patientId})`;
+      document.getElementById('resultText').value = t.result || '';
+      document.getElementById('resultModal').style.display = 'flex';
+    }
+
+    function closeResultModal() {
+      currentModalTestId = null;
+      document.getElementById('resultModal').style.display = 'none';
+    }
+
+    function saveResult() {
+      const resultText = document.getElementById('resultText').value.trim();
+      if (!resultText) return alert('Please enter the test result before saving.');
+
+      const tests = getRecords(DB_KEYS.LAB_TESTS);
+      const idx = tests.findIndex(x => x.id === currentModalTestId);
+      if (idx === -1) return;
+
+      tests[idx].result = resultText;
+      tests[idx].status = 'Done';
+      tests[idx].completedAt = new Date().toISOString();
+      saveRecords(DB_KEYS.LAB_TESTS, tests);
+
+      // Post the lab charge into the patient's bill
+      const payments = getRecords(DB_KEYS.PAYMENTS);
+      payments.push({
+        id: 'C-' + Date.now(),
+        patientId: tests[idx].patientId,
+        patientName: tests[idx].patientName,
+        type: 'Lab Charge',
+        source: 'Lab',
+        refId: tests[idx].id,
+        amount: +tests[idx].price || 0,
+        paid: 0,
+        method: '',
+        date: tests[idx].date,
+        createdAt: new Date().toISOString()
+      });
+      saveRecords(DB_KEYS.PAYMENTS, payments);
+
+      closeResultModal();
+      renderTable();
+      renderStats();
+      alert('✓ Result saved. Charge posted to billing.');
+    }
+
+    function viewResult(testId) {
+      const tests = getRecords(DB_KEYS.LAB_TESTS);
+      const t = tests.find(x => x.id === testId);
+      if (!t) return;
+      alert(`Test: ${t.testName}\nPatient: ${t.patientName}\nDate: ${t.date}\n\nResult:\n${t.result || '(none)'}`);
+    }
+
+    // ---------- Live search ----------
+    document.getElementById('searchInput').addEventListener('input', renderTable);
+    document.getElementById('filterStatus').addEventListener('change', renderTable);
+
+    // ---------- Init ----------
+    document.getElementById('testDate').value = new Date().toISOString().split('T')[0];
+    loadPatients();
+    renderTable();
+    renderStats();
+  </script>
+</body>
+</html>

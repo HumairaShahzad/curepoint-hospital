@@ -1,0 +1,292 @@
+<!-- patients.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patients - CurePoint Hospital</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #10b981; color: white;
+      padding: 12px 24px; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(16,185,129,.4);
+      font-weight: 600; z-index: 9000;
+      transition: transform 0.3s ease;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #ef4444; box-shadow: 0 8px 24px rgba(239,68,68,.4); }
+
+    .patient-badge {
+      background: #e0f2fe; color: #0369a1;
+      padding: 3px 10px; border-radius: 6px;
+      font-weight: 600; font-size: 12px;
+      font-family: 'Courier New', monospace;
+    }
+    .gender-pill {
+      padding: 2px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600;
+    }
+    .gender-pill.M { background: #dbeafe; color: #1e40af; }
+    .gender-pill.F { background: #fce7f3; color: #9f1239; }
+    .gender-pill.O { background: #f3e8ff; color: #6b21a8; }
+
+    .search-wrap {
+      position: relative; margin-bottom: 1rem;
+    }
+    .search-wrap input {
+      padding-left: 40px !important;
+    }
+    .search-wrap::before {
+      content: "🔍"; position: absolute;
+      left: 14px; top: 50%; transform: translateY(-50%);
+      opacity: 0.6;
+    }
+    .empty {
+      text-align: center; padding: 3rem 1rem;
+      color: #94a3b8; font-size: 14px;
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">+</div>
+      <div>
+        <div class="brand-title">CurePoint Hospital</div>
+        <div class="brand-subtitle">Hospital Management System</div>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-outline" onclick="handleLoadSample()" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3);">
+        ⚡ Load 30-Day Sample Data
+      </button>
+    </div>
+  </header>
+
+  <!-- Nav -->
+  <nav>
+    <a href="index.html">📊 Dashboard</a>
+    <a href="patients.html" class="active">👥 Patients</a>
+    <a href="manage-doctors.html" >🩺 Manage Doctors</a>
+    <a href="doctors.html">👨‍⚕️ Doctor Visits</a>
+    <a href="lab.html">🧪 Lab Tests</a>
+    <a href="billing.html">💳 Billing</a>
+    <a href="reports.html">📈 Reports</a>
+  </nav>
+
+  <div class="container">
+
+    <div style="margin-bottom: 1.5rem;">
+      <h1 style="font-size: 26px; color: var(--text-dark);">👥 Patient Registration</h1>
+      <p style="color: #64748b; font-size: 14px;">Register new patients and search existing records. Data saves automatically to your browser.</p>
+    </div>
+
+    <div class="grid" style="grid-template-columns: 380px 1fr; gap: 1.5rem; align-items: start;">
+
+      <!-- LEFT: Registration form -->
+      <div class="card">
+        <h2 style="font-size: 18px; margin-bottom: 1rem; color: var(--text-dark);">➕ New Patient</h2>
+        <form id="patientForm">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" id="pName" required placeholder="e.g. Rahim Uddin">
+          </div>
+          <div class="grid grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label>Age *</label>
+              <input type="number" id="pAge" required min="0" max="150" placeholder="35">
+            </div>
+            <div class="form-group">
+              <label>Gender *</label>
+              <select id="pGender" required>
+                <option value="">Select</option>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+                <option value="O">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Phone *</label>
+            <input type="tel" id="pPhone" required placeholder="017XXXXXXXX" pattern="[0-9+\- ]{6,}">
+          </div>
+          <div class="form-group">
+            <label>Address</label>
+            <textarea id="pAddress" rows="2" placeholder="Area, City"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+            💾 Save Patient
+          </button>
+        </form>
+      </div>
+
+      <!-- RIGHT: Patient list -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 style="font-size: 18px; color: var(--text-dark);">📋 All Patients (<span id="countBadge">0</span>)</h2>
+        </div>
+        <div class="search-wrap">
+          <input type="text" id="searchBox" placeholder="Search by ID, name, or phone…">
+        </div>
+        <div style="overflow-x: auto;">
+          <table id="patientTable">
+            <thead>
+              <tr>
+                <th>Patient ID</th>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Gender</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="patientBody"></tbody>
+          </table>
+          <div id="emptyState" class="empty" style="display:none;">
+            <div class="empty-icon">👥</div>
+            <div><strong>No patients found</strong></div>
+            <div style="margin-top: 0.5rem;">Register one on the left, or click <em>Load 30-Day Sample Data</em>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ⚠️ ORDER MATTERS: db.js MUST load before the inline script below -->
+  <script src="db.js"></script>
+  <script src="chat-widget.js"></script>
+
+  <script>
+    // ---------- Sanity check ----------
+    if (typeof addRecord !== 'function') {
+      alert('❌ db.js did not load. Make sure db.js is in the same folder as patients.html');
+    }
+
+    // ---------- Load sample ----------
+    function handleLoadSample() {
+      if (confirm('This will replace all current data with 30 days of sample records. Continue?')) {
+        loadSampleData();
+        location.reload();
+      }
+    }
+
+    // ---------- Toast ----------
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => t.className = 'toast' + (isError ? ' error' : ''), 2500);
+    }
+
+    // ---------- Render table ----------
+    function renderTable() {
+      const search = document.getElementById('searchBox').value.trim().toLowerCase();
+      const all = getRecords(DB_KEYS.PATIENTS);
+      const filtered = search
+        ? all.filter(p =>
+            (p.id || '').toLowerCase().includes(search) ||
+            (p.name || '').toLowerCase().includes(search) ||
+            (p.phone || '').toLowerCase().includes(search))
+        : all;
+
+      document.getElementById('countBadge').textContent = all.length;
+
+      const body = document.getElementById('patientBody');
+      const empty = document.getElementById('emptyState');
+      const table = document.getElementById('patientTable');
+
+      if (filtered.length === 0) {
+        body.innerHTML = '';
+        table.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      table.style.display = '';
+      empty.style.display = 'none';
+
+      // Newest first
+      const sorted = [...filtered].sort((a, b) =>
+        (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+      body.innerHTML = sorted.map(p => `
+        <tr>
+          <td><span class="patient-badge">${p.id}</span></td>
+          <td><strong>${escapeHtml(p.name)}</strong></td>
+          <td>${p.age}</td>
+          <td><span class="gender-pill ${p.gender}">${p.gender}</span></td>
+          <td>${escapeHtml(p.phone)}</td>
+          <td style="color:#64748b; font-size: 13px;">${escapeHtml(p.address || '—')}</td>
+          <td>
+            <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;"
+              onclick="handleDelete('${p.id}')">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, s => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[s]));
+    }
+
+    // ---------- Delete ----------
+    function handleDelete(id) {
+      if (!confirm(`Delete patient ${id}? This cannot be undone.`)) return;
+      deleteRecord(DB_KEYS.PATIENTS, id);
+      showToast(`Patient ${id} deleted`);
+      renderTable();
+    }
+
+    // ---------- Save new patient ----------
+    document.getElementById('patientForm').addEventListener('submit', function (e) {
+      e.preventDefault();  // 🚨 critical — stops page reload that was wiping the form
+
+      const patient = {
+        id:        nextId('P'),
+        name:      document.getElementById('pName').value.trim(),
+        age:       parseInt(document.getElementById('pAge').value, 10),
+        gender:    document.getElementById('pGender').value,
+        phone:     document.getElementById('pPhone').value.trim(),
+        address:   document.getElementById('pAddress').value.trim(),
+        createdAt: new Date().toISOString()
+      };
+
+      // Guardrail
+      if (!patient.name || !patient.age || !patient.gender || !patient.phone) {
+        showToast('Please fill all required fields', true);
+        return;
+      }
+
+      try {
+        addRecord(DB_KEYS.PATIENTS, patient);
+        console.log('✅ Saved patient:', patient);
+        console.log('📦 All patients now:', getRecords(DB_KEYS.PATIENTS));
+        showToast(`✅ ${patient.name} saved as ${patient.id}`);
+        this.reset();
+        renderTable();
+      } catch (err) {
+        console.error('Save failed:', err);
+        showToast('❌ Save failed — check console', true);
+      }
+    });
+
+    // ---------- Live search ----------
+    document.getElementById('searchBox').addEventListener('input', renderTable);
+
+    // ---------- Initial load ----------
+    renderTable();
+  </script>
+</body>
+</html>

@@ -1,0 +1,557 @@
+<!-- reports.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports - CurePoint Hospital</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Report-specific styles */
+    .report-tabs {
+      display: flex;
+      gap: 4px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .report-tab {
+      flex: 1;
+      min-width: 140px;
+      padding: 10px 14px;
+      border: none;
+      background: transparent;
+      color: #475569;
+      font-weight: 600;
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .report-tab:hover { background: rgba(255,255,255,0.6); }
+    .report-tab.active {
+      background: white;
+      color: #0284c7;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      align-items: end;
+      flex-wrap: wrap;
+      padding: 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    .filter-bar .form-group { margin: 0; }
+    .filter-bar label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .total-row {
+      background: #0f172a !important;
+      color: white !important;
+      font-weight: 700;
+    }
+    .total-row td { color: white !important; }
+    .report-section { display: none; }
+    .report-section.active { display: block; }
+
+    /* Print styling — hide chrome */
+    @media print {
+      header, nav, .filter-bar, .report-tabs, .btn, #cm-chat-launcher, #cm-chat-panel {
+        display: none !important;
+      }
+      body { background: white !important; }
+      .container { padding: 0 !important; max-width: 100% !important; }
+      .card { box-shadow: none !important; border: 1px solid #ddd; }
+      .print-header { display: block !important; }
+      table { font-size: 11px; }
+    }
+    .print-header { display: none; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #0284c7; }
+    .print-header h1 { font-size: 22px; color: #0284c7; margin: 0 0 4px; }
+    .print-header p { font-size: 12px; color: #64748b; margin: 2px 0; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Banner -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">+</div>
+      <div>
+        <div class="brand-title">CurePoint Hospital</div>
+        <div class="brand-subtitle">Hospital Management System</div>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-outline" onclick="handleLoadSample()" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3);">
+        ⚡ Load 30-Day Sample Data
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="index.html">📊 Dashboard</a>
+    <a href="patients.html">👥 Patients</a>
+    <a href="manage-doctors.html">🩺 Manage Doctors</a>
+    <a href="doctors.html">👨‍⚕️ Doctor Visits</a>
+    <a href="lab.html">🧪 Lab Tests</a>
+    <a href="billing.html">💳 Billing</a>
+    <a href="reports.html" class="active">📈 Reports</a>
+  </nav>
+
+  <div class="container">
+
+    <div style="margin-bottom: 1.5rem;">
+      <h1 style="font-size: 26px; color: var(--text-dark);">📈 Reports</h1>
+      <p style="color: #64748b; font-size: 14px;">Filter by date range, review totals, and print any report for records.</p>
+    </div>
+
+    <!-- Report tab selector -->
+    <div class="report-tabs">
+      <button class="report-tab active" data-report="daily" onclick="switchReport('daily')">💰 Daily Collection</button>
+      <button class="report-tab" data-report="patients" onclick="switchReport('patients')">👥 Patient List</button>
+      <button class="report-tab" data-report="doctors" onclick="switchReport('doctors')">👨‍⚕️ Doctor-wise</button>
+      <button class="report-tab" data-report="lab" onclick="switchReport('lab')">🧪 Lab Tests</button>
+    </div>
+
+    <!-- =============== DAILY COLLECTION REPORT =============== -->
+    <section class="report-section active" id="report-daily">
+      <div class="card">
+        <!-- Print-only header -->
+        <div class="print-header">
+          <h1>CurePoint Hospital — Daily Collection Report</h1>
+          <p id="printMetaDaily"></p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="form-group">
+            <label>From Date</label>
+            <input type="date" id="dailyFrom">
+          </div>
+          <div class="form-group">
+            <label>To Date</label>
+            <input type="date" id="dailyTo">
+          </div>
+          <button class="btn btn-primary" onclick="runDaily()">Apply Filter</button>
+          <button class="btn btn-outline" onclick="window.print()">🖨️ Print</button>
+        </div>
+
+        <div class="card-title">💰 Daily Collection Breakdown</div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Doctor Visits (Tk)</th>
+                <th>Lab Tests (Tk)</th>
+                <th>Other (Tk)</th>
+                <th>Total Collected (Tk)</th>
+                <th>Due Added (Tk)</th>
+              </tr>
+            </thead>
+            <tbody id="dailyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============== PATIENT LIST REPORT =============== -->
+    <section class="report-section" id="report-patients">
+      <div class="card">
+        <div class="print-header">
+          <h1>CurePoint Hospital — Patient Registration Report</h1>
+          <p id="printMetaPatients"></p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="form-group">
+            <label>From Date</label>
+            <input type="date" id="patFrom">
+          </div>
+          <div class="form-group">
+            <label>To Date</label>
+            <input type="date" id="patTo">
+          </div>
+          <button class="btn btn-primary" onclick="runPatients()">Apply Filter</button>
+          <button class="btn btn-outline" onclick="window.print()">🖨️ Print</button>
+        </div>
+
+        <div class="card-title">👥 Patients Registered in Date Range</div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Reg. Date</th>
+                <th>Patient ID</th>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Gender</th>
+                <th>Phone</th>
+                <th>Address</th>
+              </tr>
+            </thead>
+            <tbody id="patBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============== DOCTOR-WISE REPORT =============== -->
+    <section class="report-section" id="report-doctors">
+      <div class="card">
+        <div class="print-header">
+          <h1>CurePoint Hospital — Doctor-wise Report</h1>
+          <p id="printMetaDoctors"></p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="form-group">
+            <label>From Date</label>
+            <input type="date" id="docFrom">
+          </div>
+          <div class="form-group">
+            <label>To Date</label>
+            <input type="date" id="docTo">
+          </div>
+          <button class="btn btn-primary" onclick="runDoctors()">Apply Filter</button>
+          <button class="btn btn-outline" onclick="window.print()">🖨️ Print</button>
+        </div>
+
+        <div class="card-title">👨‍⚕️ Visits & Fees Per Doctor</div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Doctor</th>
+                <th>Specialization</th>
+                <th>Total Visits</th>
+                <th>Total Fees (Tk)</th>
+                <th>Avg Fee / Visit</th>
+              </tr>
+            </thead>
+            <tbody id="docBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============== LAB TEST REPORT =============== -->
+    <section class="report-section" id="report-lab">
+      <div class="card">
+        <div class="print-header">
+          <h1>CurePoint Hospital — Lab Test Report</h1>
+          <p id="printMetaLab"></p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="form-group">
+            <label>From Date</label>
+            <input type="date" id="labFrom">
+          </div>
+          <div class="form-group">
+            <label>To Date</label>
+            <input type="date" id="labTo">
+          </div>
+          <button class="btn btn-primary" onclick="runLab()">Apply Filter</button>
+          <button class="btn btn-outline" onclick="window.print()">🖨️ Print</button>
+        </div>
+
+        <div class="card-title">🧪 Lab Tests Summary by Type</div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Test Name</th>
+                <th>Ordered</th>
+                <th>Done</th>
+                <th>Pending</th>
+                <th>Revenue from Done (Tk)</th>
+              </tr>
+            </thead>
+            <tbody id="labBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="db.js"></script>
+  <script src="chat-widget.js"></script>
+  <script>
+    function handleLoadSample() {
+      if (confirm('Load 30-day sample data? This will replace any existing records.')) {
+        loadSampleData();
+        location.reload();
+      }
+    }
+
+    // ---------- Tab switching ----------
+    function switchReport(name) {
+      document.querySelectorAll('.report-tab').forEach(t => t.classList.toggle('active', t.dataset.report === name));
+      document.querySelectorAll('.report-section').forEach(s => s.classList.toggle('active', s.id === 'report-' + name));
+    }
+
+    // ---------- Default date range: last 30 days ----------
+    function setDefaultRange(fromId, toId) {
+      const today = new Date();
+      const from = new Date();
+      from.setDate(today.getDate() - 30);
+      document.getElementById(fromId).value = from.toISOString().split('T')[0];
+      document.getElementById(toId).value = today.toISOString().split('T')[0];
+    }
+
+    function inRange(dateStr, from, to) {
+      if (!dateStr) return false;
+      return dateStr >= from && dateStr <= to;
+    }
+
+    function fmtRange(from, to) {
+      return `Period: ${from} to ${to} · Generated ${new Date().toLocaleString()}`;
+    }
+
+    // ---------- 1. DAILY COLLECTION ----------
+    function runDaily() {
+      const from = document.getElementById('dailyFrom').value;
+      const to = document.getElementById('dailyTo').value;
+      if (!from || !to) return alert('Select both dates.');
+      document.getElementById('printMetaDaily').innerText = fmtRange(from, to);
+
+      const payments = getRecords(DB_KEYS.PAYMENTS);
+      const byDate = {};
+
+      payments.forEach(r => {
+        if (!inRange(r.date, from, to)) return;
+        if (!byDate[r.date]) byDate[r.date] = { visit: 0, lab: 0, other: 0, due: 0 };
+        const paid = +r.paid || 0;
+        const amt = +r.amount || 0;
+
+        if (paid > 0 && r.method) {
+          // actual money collected - classify by source
+          const src = (r.source || '').toLowerCase();
+          if (src.includes('doctor') || src.includes('visit')) byDate[r.date].visit += paid;
+          else if (src.includes('lab')) byDate[r.date].lab += paid;
+          else byDate[r.date].other += paid;
+        } else if (amt > 0 && !r.method) {
+          // a charge was raised but not yet paid
+          byDate[r.date].due += amt;
+        }
+      });
+
+      const dates = Object.keys(byDate).sort();
+      const tbody = document.getElementById('dailyBody');
+      if (!dates.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:2rem;">No collections in this range.</td></tr>`;
+        return;
+      }
+
+      let totalV = 0, totalL = 0, totalO = 0, totalDue = 0;
+      tbody.innerHTML = dates.map(d => {
+        const row = byDate[d];
+        const total = row.visit + row.lab + row.other;
+        totalV += row.visit; totalL += row.lab; totalO += row.other; totalDue += row.due;
+        return `
+          <tr>
+            <td style="font-weight:600;">${d}</td>
+            <td>${row.visit.toLocaleString()}</td>
+            <td>${row.lab.toLocaleString()}</td>
+            <td>${row.other.toLocaleString()}</td>
+            <td style="font-weight:600; color:#10b981;">${total.toLocaleString()}</td>
+            <td style="color:#ef4444;">${row.due.toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('') + `
+        <tr class="total-row">
+          <td>TOTAL</td>
+          <td>Tk ${totalV.toLocaleString()}</td>
+          <td>Tk ${totalL.toLocaleString()}</td>
+          <td>Tk ${totalO.toLocaleString()}</td>
+          <td>Tk ${(totalV + totalL + totalO).toLocaleString()}</td>
+          <td>Tk ${totalDue.toLocaleString()}</td>
+        </tr>
+      `;
+    }
+
+    // ---------- 2. PATIENT LIST ----------
+    function runPatients() {
+      const from = document.getElementById('patFrom').value;
+      const to = document.getElementById('patTo').value;
+      if (!from || !to) return alert('Select both dates.');
+      document.getElementById('printMetaPatients').innerText = fmtRange(from, to);
+
+      const patients = getRecords(DB_KEYS.PATIENTS);
+      const filtered = patients.filter(p => {
+        const regDate = (p.registeredAt || '').split('T')[0] || p.date || '';
+        return inRange(regDate, from, to);
+      });
+
+      const tbody = document.getElementById('patBody');
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#94a3b8; padding:2rem;">No patients registered in this range.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(p => {
+        const d = (p.registeredAt || '').split('T')[0] || p.date || '—';
+        return `
+          <tr>
+            <td style="font-size:12px; color:#64748b;">${d}</td>
+            <td style="font-weight:600;">${p.id}</td>
+            <td>${p.name}</td>
+            <td>${p.age}</td>
+            <td>${p.gender}</td>
+            <td>${p.phone || '—'}</td>
+            <td style="font-size:12px;">${p.address || '—'}</td>
+          </tr>
+        `;
+      }).join('') + `
+        <tr class="total-row">
+          <td colspan="2">TOTAL PATIENTS</td>
+          <td colspan="5">${filtered.length}</td>
+        </tr>
+      `;
+    }
+
+    // ---------- 3. DOCTOR-WISE ----------
+    function runDoctors() {
+      const from = document.getElementById('docFrom').value;
+      const to = document.getElementById('docTo').value;
+      if (!from || !to) return alert('Select both dates.');
+      document.getElementById('printMetaDoctors').innerText = fmtRange(from, to);
+
+      const visits = getRecords(DB_KEYS.VISITS);
+      const doctors = getRecords(DB_KEYS.DOCTORS);
+      const docMap = {};
+      doctors.forEach(d => { docMap[d.id] = d; });
+
+      const stats = {};
+      visits.forEach(v => {
+        if (!inRange(v.date, from, to)) return;
+        const key = v.doctorId || v.doctorName || 'Unknown';
+        if (!stats[key]) {
+          const d = docMap[v.doctorId];
+          stats[key] = {
+            name: v.doctorName || (d ? d.name : 'Unknown'),
+            spec: d ? d.specialization : (v.specialization || '—'),
+            visits: 0,
+            fees: 0
+          };
+        }
+        stats[key].visits += 1;
+        stats[key].fees += (+v.fee || 0);
+      });
+
+      const list = Object.values(stats).sort((a, b) => b.visits - a.visits);
+      const tbody = document.getElementById('docBody');
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:2rem;">No visits recorded in this range.</td></tr>`;
+        return;
+      }
+
+      let totalV = 0, totalF = 0;
+      tbody.innerHTML = list.map(s => {
+        totalV += s.visits; totalF += s.fees;
+        const avg = s.visits ? Math.round(s.fees / s.visits) : 0;
+        return `
+          <tr>
+            <td style="font-weight:600;">${s.name}</td>
+            <td style="font-size:12px; color:#64748b;">${s.spec}</td>
+            <td>${s.visits}</td>
+            <td>Tk ${s.fees.toLocaleString()}</td>
+            <td>Tk ${avg.toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('') + `
+        <tr class="total-row">
+          <td colspan="2">TOTAL</td>
+          <td>${totalV}</td>
+          <td>Tk ${totalF.toLocaleString()}</td>
+          <td>Tk ${totalV ? Math.round(totalF / totalV).toLocaleString() : 0}</td>
+        </tr>
+      `;
+    }
+
+    // ---------- 4. LAB TESTS ----------
+    function runLab() {
+      const from = document.getElementById('labFrom').value;
+      const to = document.getElementById('labTo').value;
+      if (!from || !to) return alert('Select both dates.');
+      document.getElementById('printMetaLab').innerText = fmtRange(from, to);
+
+      const tests = getRecords(DB_KEYS.LAB_TESTS);
+      const stats = {};
+      tests.forEach(t => {
+        if (!inRange(t.date, from, to)) return;
+        const name = t.testName || 'Unknown Test';
+        if (!stats[name]) stats[name] = { ordered: 0, done: 0, pending: 0, revenue: 0 };
+        stats[name].ordered += 1;
+        if ((t.status || '').toLowerCase() === 'done') {
+          stats[name].done += 1;
+          stats[name].revenue += (+t.price || 0);
+        } else {
+          stats[name].pending += 1;
+        }
+      });
+
+      const list = Object.entries(stats).sort((a, b) => b[1].ordered - a[1].ordered);
+      const tbody = document.getElementById('labBody');
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:2rem;">No lab tests ordered in this range.</td></tr>`;
+        return;
+      }
+
+      let totO = 0, totD = 0, totP = 0, totR = 0;
+      tbody.innerHTML = list.map(([name, s]) => {
+        totO += s.ordered; totD += s.done; totP += s.pending; totR += s.revenue;
+        return `
+          <tr>
+            <td style="font-weight:600;">${name}</td>
+            <td>${s.ordered}</td>
+            <td style="color:#10b981;">${s.done}</td>
+            <td style="color:#f59e0b;">${s.pending}</td>
+            <td>Tk ${s.revenue.toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('') + `
+        <tr class="total-row">
+          <td>TOTAL</td>
+          <td>${totO}</td>
+          <td>${totD}</td>
+          <td>${totP}</td>
+          <td>Tk ${totR.toLocaleString()}</td>
+        </tr>
+      `;
+    }
+
+    // ---------- Init ----------
+    ['daily', 'pat', 'doc', 'lab'].forEach(prefix => {
+      const fromId = prefix === 'daily' ? 'dailyFrom' : prefix === 'pat' ? 'patFrom' : prefix === 'doc' ? 'docFrom' : 'labFrom';
+      const toId = prefix === 'daily' ? 'dailyTo' : prefix === 'pat' ? 'patTo' : prefix === 'doc' ? 'docTo' : 'labTo';
+      setDefaultRange(fromId, toId);
+    });
+
+    runDaily();
+    runPatients();
+    runDoctors();
+    runLab();
+  </script>
+</body>
+</html>

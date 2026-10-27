@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Visits & Prescriptions - CurePoint Hospital</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Header Banner -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">+</div>
+      <div>
+        <div class="brand-title">CurePoint Hospital</div>
+        <div class="brand-subtitle">Hospital Management System</div>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-outline" onclick="loadSampleData(); location.reload();" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.3);">
+        ⚡ Load 30-Day Sample Data
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Bar -->
+  <nav>
+    <a href="index.html">📊 Dashboard</a>
+    <a href="patients.html">👥 Patients</a>
+    <a href="manage-doctors.html">🩺 Manage Doctors</a>
+    <a href="doctors.html" class="active">👨‍⚕️ Doctor Visits</a>
+    <a href="lab.html">🧪 Lab Tests</a>
+    <a href="billing.html">💳 Billing</a>
+    <a href="reports.html">📈 Reports</a>
+  </nav>
+
+  <!-- Main Content Container -->
+  <div class="container">
+
+    <div style="margin-bottom: 1.5rem;">
+      <h1 style="font-size: 24px; color: var(--text-dark);">Doctor Visits & Prescriptions</h1>
+      <p style="color: #64748b; font-size: 14px;">Schedule patient consultations, prescribe medications, and add visit fees to billing.</p>
+    </div>
+
+    <!-- Layout: Left Form, Right History Table -->
+    <div class="grid grid-2" style="grid-template-columns: 1fr 1.8fr; align-items: start;">
+      
+      <!-- New Consultation Form -->
+      <div class="card">
+        <div class="card-title">📝 Record Consultation & Visit</div>
+        <form id="visitForm" onsubmit="saveVisit(event)">
+          
+          <div class="form-group">
+            <label>Select Patient *</label>
+            <select id="visitPatient" required>
+              <option value="">-- Choose Patient --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Select Doctor *</label>
+            <select id="visitDoctor" onchange="updateDoctorFee()" required>
+              <option value="">-- Choose Doctor --</option>
+            </select>
+          </div>
+
+          <div class="grid grid-2" style="gap: 10px; margin-bottom: 0;">
+            <div class="form-group">
+              <label>Visit Date *</label>
+              <input type="date" id="visitDate" required>
+            </div>
+            <div class="form-group">
+              <label>Consultation Fee (Tk) *</label>
+              <input type="number" id="visitFee" min="0" placeholder="e.g. 800" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Chief Complaints / Symptoms</label>
+            <input type="text" id="visitSymptoms" placeholder="e.g. Fever for 3 days, cough, headache">
+          </div>
+
+          <div class="form-group">
+            <label>Prescribed Medicines & Advice</label>
+            <textarea id="visitMedicines" rows="3" placeholder="e.g. Tab Napa 500mg (1+1+1), Cap Seclo 20mg (1+0+1) before meals"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">💾 Save Visit & Generate Fee</button>
+        </form>
+      </div>
+
+      <!-- Visits History Table -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom: 15px;">
+          <span>🩺 Consultation History (<span id="visitCount">0</span>)</span>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="form-group">
+          <input type="text" id="searchInput" oninput="filterVisits()" placeholder="🔍 Search by Patient Name, ID, or Doctor Name...">
+        </div>
+
+        <!-- Visits Table -->
+        <div class="table-scroll" style="max-height: 520px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Fee</th>
+                <th>Complaints</th>
+              </tr>
+            </thead>
+            <tbody id="visitTableBody">
+              <tr><td colspan="5" style="text-align: center; color: #94a3b8;">Loading visit records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="db.js"></script>
+  <script src="chat-widget.js"></script>
+  <script>
+    let allPatients = [];
+    let allDoctors = [];
+    let allVisits = [];
+
+    // Initialize Page
+    function init() {
+      allPatients = getRecords(DB_KEYS.PATIENTS);
+      allDoctors = getRecords(DB_KEYS.DOCTORS);
+      allVisits = getRecords(DB_KEYS.VISITS);
+
+      // Set default date to today
+      document.getElementById('visitDate').value = new Date().toISOString().split('T')[0];
+
+      populateDropdowns();
+      document.getElementById('visitCount').innerText = allVisits.length;
+      renderTable(allVisits);
+    }
+
+    // Populate Patient and Doctor Select Options
+    function populateDropdowns() {
+      const pSelect = document.getElementById('visitPatient');
+      pSelect.innerHTML = '<option value="">-- Choose Patient --</option>' + 
+        allPatients.map(p => `<option value="${p.id}">${p.name} (${p.id}) - ${p.phone}</option>`).join('');
+
+      const dSelect = document.getElementById('visitDoctor');
+      dSelect.innerHTML = '<option value="">-- Choose Doctor --</option>' + 
+        allDoctors.map(d => `<option value="${d.id}" data-fee="${d.fee}">${d.name} (${d.specialty}) - Tk ${d.fee}</option>`).join('');
+    }
+
+    // Auto Fill Doctor Fee when Doctor selected
+    function updateDoctorFee() {
+      const dSelect = document.getElementById('visitDoctor');
+      const selectedOption = dSelect.options[dSelect.selectedIndex];
+      if (selectedOption && selectedOption.dataset.fee) {
+        document.getElementById('visitFee').value = selectedOption.dataset.fee;
+      }
+    }
+
+    // Render Visit Table
+    function renderTable(list) {
+      const tbody = document.getElementById('visitTableBody');
+      if (!list || list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 2rem;">No consultation records found. Fill the form or load sample data.</td></tr>`;
+        return;
+      }
+
+      // Newest first
+      const sorted = [...list].reverse();
+      tbody.innerHTML = sorted.map(v => `
+        <tr>
+          <td style="font-size: 13px; color: #64748b;">${v.date}</td>
+          <td>
+            <strong>${v.patientName || v.patientId}</strong><br>
+            <small style="color: #64748b;">${v.patientId}</small>
+          </td>
+          <td><strong>${v.doctorName}</strong></td>
+          <td><span class="badge badge-success">Tk ${v.fee}</span></td>
+          <td style="font-size: 13px; color: #475569;">${v.chiefComplaints || 'Routine checkup'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Save Consultation Visit
+    function saveVisit(e) {
+      e.preventDefault();
+
+      const patientId = document.getElementById('visitPatient').value;
+      const doctorId = document.getElementById('visitDoctor').value;
+      const patient = allPatients.find(p => p.id === patientId);
+      const doctor = allDoctors.find(d => d.id === doctorId);
+
+      if (!patient || !doctor) {
+        alert('Please select both a valid patient and doctor!');
+        return;
+      }
+
+      const fee = parseFloat(document.getElementById('visitFee').value) || 0;
+      const visitDate = document.getElementById('visitDate').value;
+
+      const newVisit = {
+        id: 'V-' + (1000 + allVisits.length + 1),
+        patientId: patient.id,
+        patientName: patient.name,
+        doctorId: doctor.id,
+        doctorName: doctor.name,
+        date: visitDate,
+        chiefComplaints: document.getElementById('visitSymptoms').value.trim(),
+        medicines: document.getElementById('visitMedicines').value.trim(),
+        fee: fee
+      };
+
+      allVisits.push(newVisit);
+      saveRecords(DB_KEYS.VISITS, allVisits);
+
+      // Auto add to payment ledger (Unpaid/Due initially)
+      const allPayments = getRecords(DB_KEYS.PAYMENTS);
+      allPayments.push({
+        id: 'PM-' + (2000 + allPayments.length + 1),
+        patientId: patient.id,
+        patientName: patient.name,
+        date: visitDate,
+        type: 'Doctor Visit',
+        itemDetails: `Consultation with ${doctor.name}`,
+        total: fee,
+        paid: 0,
+        due: fee,
+        status: 'Due',
+        method: 'Cash'
+      });
+      saveRecords(DB_KEYS.PAYMENTS, allPayments);
+
+      alert(`✅ Visit recorded for ${patient.name}! Tk ${fee} consultation fee added to patient billing ledger.`);
+
+      document.getElementById('visitForm').reset();
+      document.getElementById('visitDate').value = new Date().toISOString().split('T')[0];
+      init();
+    }
+
+    // Filter Visits
+    function filterVisits() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      if (!query) {
+        renderTable(allVisits);
+        return;
+      }
+
+      const filtered = allVisits.filter(v => 
+        (v.patientName && v.patientName.toLowerCase().includes(query)) ||
+        v.patientId.toLowerCase().includes(query) ||
+        (v.doctorName && v.doctorName.toLowerCase().includes(query))
+      );
+
+      renderTable(filtered);
+    }
+
+    init();
+  </script>
+</body>
+</html>
